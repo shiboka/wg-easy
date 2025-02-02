@@ -4,20 +4,16 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - production
+      - master
 
 jobs:
   deploy:
     name: Build & Deploy
     runs-on: ubuntu-latest
-    if: github.repository_owner == 'wg-easy'
-    permissions:
-      packages: write
-      contents: read
+
     steps:
+    - name: Checkout
     - uses: actions/checkout@v4
-      with:
-        ref: production
 
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v3
@@ -30,14 +26,11 @@ jobs:
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Set environment variables
-      run: echo RELEASE=$(cat ./src/package.json | jq -r .release | jq -r .version) >> $GITHUB_ENV
+        password: ${{ secrets.GH_TOKEN }}
 
     - name: Build & Publish Docker Image
       uses: docker/build-push-action@v6
       with:
         push: true
         platforms: linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64/v8
-        tags: ghcr.io/wg-easy/wg-easy:latest, ghcr.io/wg-easy/wg-easy:${{ env.RELEASE }}
+        tags: ghcr.io/${{ github.repository }}:latest
