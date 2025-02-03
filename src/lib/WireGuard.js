@@ -47,9 +47,11 @@ module.exports = class WireGuard {
         const publicKey = await Util.exec(`echo ${privateKey} | wg pubkey`, {
           log: 'echo ***hidden*** | wg pubkey',
         });
+        const preSharedKey = await Util.exec('wg genpsk');
         const address = WG_DEFAULT_ADDRESS.replace('x', '1');
 
         config = {
+          preSharedkey: preSharedKey,
           server: {
             privateKey,
             publicKey,
@@ -103,7 +105,7 @@ module.exports = class WireGuard {
 # Server
 [Interface]
 PrivateKey = ${config.server.privateKey}
-Address = ${config.server.address}/32
+Address = ${config.server.address}/24
 ListenPort = ${WG_PORT}
 PreUp = ${WG_PRE_UP}
 PostUp = ${WG_POST_UP}
@@ -119,7 +121,7 @@ PostDown = ${WG_POST_DOWN}
 # Client: ${client.name} (${clientId})
 [Peer]
 PublicKey = ${client.publicKey}
-${client.preSharedKey ? `PresharedKey = ${client.preSharedKey}\n` : ''
+PresharedKey = ${config.preSharedKey}
 }AllowedIPs = ${client.address}/32`; /* AllowedIPs = ${WG_ALLOWED_IPS} */
     }
 
@@ -215,14 +217,14 @@ ${client.preSharedKey ? `PresharedKey = ${client.preSharedKey}\n` : ''
     return `
 [Interface]
 PrivateKey = ${client.privateKey ? `${client.privateKey}` : 'REPLACE_ME'}
-Address = ${client.address}/32
+Address = ${client.address}/24
 ${WG_DEFAULT_DNS ? `DNS = ${WG_DEFAULT_DNS}\n` : ''}\
 ${WG_MTU ? `MTU = ${WG_MTU}\n` : ''}\
 
 [Peer]
 PublicKey = ${config.server.publicKey}
-${client.preSharedKey ? `PresharedKey = ${client.preSharedKey}\n` : ''
-}AllowedIPs = ${WG_ALLOWED_IPS}
+PresharedKey = ${config.preSharedKey}
+AllowedIPs = ${WG_ALLOWED_IPS}
 PersistentKeepalive = ${WG_PERSISTENT_KEEPALIVE}
 Endpoint = ${WG_HOST}:${WG_CONFIG_PORT}`;
   }
@@ -246,7 +248,7 @@ Endpoint = ${WG_HOST}:${WG_CONFIG_PORT}`;
     const publicKey = await Util.exec(`echo ${privateKey} | wg pubkey`, {
       log: 'echo ***hidden*** | wg pubkey',
     });
-    const preSharedKey = await Util.exec('wg genpsk');
+    const preSharedKey = config.preSharedKey;
 
     // Calculate next IP
     let address;
